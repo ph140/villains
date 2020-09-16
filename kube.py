@@ -1,12 +1,24 @@
 import random
+import time
 import pygame
+
 pygame.init()
 
 q = 0
-display_width = 800
-display_height = 500
-grid_step = 20
+game_over = False
 tick_speed = 20
+
+# D I S P L A Y
+display_width = 800
+display_height = 480
+grid_step = 20
+
+
+# S P R I T E
+sprite_start_x = 20
+sprite_start_y = 20
+food_start_x = 120
+food_start_y = 120
 
 
 class figur():
@@ -27,44 +39,58 @@ class figur():
         if cls.y == display_height:
             cls.y = 0
 
-    def caught(cls, villain):
-        if cls.x == villain.x and cls.y == villain.y:
+    def caught(cls, target):
+        if cls.x == target.x and cls.y == target.y:
             return True
         else:
             return False
 
-    def move(cls, sprite):
-        if cls.x > sprite.x:
-            if random.randint(1, 6) > 5:
-                xretning = random.randint(0, 1)
-            else:
-                xretning = -1
+    def attack(cls, target):
+        if cls.x > target.x:
+            xretning = random.randint(-1, 0)
+        elif cls.x == target.x:
+            xretning = 0
         else:
-            if random.randint(1, 6) > 5:
-                xretning = random.randint(-1, 0)
-            else:
-                xretning = 1
+            xretning = random.randint(0, 1)
 
-        if cls.y > sprite.y:
-            if random.randint(1, 6) > 5:
-                yretning = random.randint(0, 1)
-            else:
-                yretning = -1
+        if cls.y > target.y:
+            yretning = random.randint(-1, 0)
+        elif cls.y == target.y:
+            yretning = 0
         else:
-            if random.randint(1, 6) > 5:
-                yretning = random.randint(-1, 0)
-            else:
-                yretning = 1
+            yretning = random.randint(0, 1)
 
         cls.y += (grid_step * yretning)
         cls.x += (grid_step * xretning)
+        cls.overstep()
+
+    def move(cls):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                main = False
+
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_UP:
+                    cls.y -= 20
+
+                if event.key == pygame.K_DOWN:
+                    cls.y += 20
+
+                if event.key == pygame.K_LEFT:
+                    cls.x -= 20
+
+                if event.key == pygame.K_RIGHT:
+                    cls.x += 20
+        cls.overstep()
 
 
-sprite = figur(100, 100, 20, 20)
-food = figur(random_x, random_y, 20, 20)
+# Adding sprite and food
+sprite = figur(sprite_start_x, sprite_start_y, grid_step, grid_step)
+food = figur(food_start_x, food_start_y, grid_step, grid_step)
 villains = []
 
 
+# Colors
 black = (0, 0, 0)
 white = (255, 255, 255)
 red = (255, 0, 0)
@@ -80,7 +106,9 @@ def newfood():
 
 
 def newvillain():
-    villains.append(figur(random_x+grid_step, random_y+grid_step, 20, 20))
+    villain_x = random.randrange(0, display_width-grid_step, grid_step)
+    villain_y = random.randrange(0, display_height-grid_step, grid_step)
+    villains.append(figur(villain_x+grid_step, villain_y+grid_step, 20, 20))
 
 
 def text(txt_msg, txt_clr, txt_x, txt_y, txt_size,):
@@ -89,60 +117,55 @@ def text(txt_msg, txt_clr, txt_x, txt_y, txt_size,):
     gameDisplay.blit(txt, (txt_x, txt_y))
 
 
-main = True
 newvillain()
+newfood()
 
-while main == True:
-    game_over = False
+
+while True:
 
     gameDisplay = pygame.display.set_mode((display_width, display_height))
+    bg = pygame.image.load("stars.jpg")
+    gameDisplay.blit(bg, (0, 0))
+    # vill_img = pygame.image.load("alien.png")
+
     pygame.draw.rect(gameDisplay, red, [
                      sprite.x, sprite.y, sprite.width, sprite.height])
     pygame.draw.rect(gameDisplay, white, [
                      food.x, food.y, food.width, food.height])
     for i in villains:
         pygame.draw.rect(gameDisplay, blue, [i.x, i.y, i.width, i.height])
+        # gameDisplay.blit(vill_img, [i.x, i.y, i.width, i.height])
 
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            main = False
+    # event_listener()
+    sprite.move()
+    # sprite.overstep()
 
-        'CONTROLS'
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_UP:
-                sprite.y -= 20
-
-            if event.key == pygame.K_DOWN:
-                sprite.y += 20
-
-            if event.key == pygame.K_LEFT:
-                sprite.x -= 20
-
-            if event.key == pygame.K_RIGHT:
-                sprite.x += 20
-    if food.x == sprite.x and food.y == sprite.y:
+    # if food.x == sprite.x and food.y == sprite.y:
+    if sprite.caught(food) == True:
         sprite.score += 1
         if sprite.score % 5 == 0 and sprite.score != 0:
             newvillain()
-            tick_speed += 5
+            tick_speed += 4
         newfood()
 
-    p = 0
-    for i in villains:
+    for i in range(len(villains)):
         if q % 10 == 0:
-            villains[p].move(sprite)
-            villains[p].overstep()
-        if sprite.caught(villains[p]) == True:
+            villains[i].attack(sprite)
+            villains[i].overstep()
+        if villains[i].caught(sprite) == True:
             game_over = True
-        p += 1
-    sprite.overstep()
+
     q += 1
+
+    pygame.display.update()
+    clock.tick(tick_speed)
 
     # G A M E  O V E R !
     while game_over:
         gameDisplay.fill(black)
         text('Game Over', white, 90, 60, 30)
         text('Du fikk '+str(sprite.score) + " poeng", white, 200, 200, 30)
+        text("Trykk 'S' for å starte en ny runde", white, 340, 60, 15)
         pygame.display.update()
 
         for event in pygame.event.get():
@@ -150,11 +173,10 @@ while main == True:
                 if event.key == pygame.K_s:
                     sprite.score = 0
                     q = 0
-                    villains.clear()
-                    for i in range(2):
-                        newvillain()
                     tick_speed = 20
+                    villains.clear()
+                    newvillain()
                     game_over = False
-
-    pygame.display.update()
-    clock.tick(tick_speed)
+                if event.key == pygame.K_q:
+                    pygame.quit()
+        time.sleep(0.05)
